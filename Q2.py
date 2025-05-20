@@ -1,56 +1,43 @@
-import pandas as pd
-import plotly.express as px
+import numpy as np
+years = list(range(2010, 2021))
+data = []
+     
 
-# Load the dataset
-df = pd.read_csv("Significant Earthquake Dataset 1900-2023.csv")
+for year in years:
+    temp = df.copy()
+    temp['Year'] = year
+    # Simulate change in renewable energy usage
+    temp['Renewable_Energy'] = temp['Renewable_Energy'] * (1 + 0.03 * (year - 2010)) + np.random.rand(len(temp)) * 50
+    temp['Total_Energy'] = temp['Renewable_Energy'] * np.random.uniform(2, 5, len(temp))
+    data.append(temp)
+     
 
-# Convert 'Time' to datetime and extract year
-df['Time'] = pd.to_datetime(df['Time'], errors='coerce')
-df['Year'] = df['Time'].dt.year
+df_all = pd.concat(data)
+     
 
-# Clean data: drop missing lat/lon/magnitude
-df_clean = df.dropna(subset=['Latitude', 'Longitude', 'Mag'])
+fig_choropleth = px.choropleth(df_all,
+                                locations="Code",
+                                color="Renewable_Energy",
+                                hover_name="Country",
+                                animation_frame="Year",
+                                color_continuous_scale="Greens",
+                                title="Global Renewable Energy Usage (%) Over Time")
+     
 
-# ----------------------
-# Bubble Map (Individual Earthquakes)
-# ----------------------
-bubble_map = px.scatter_geo(
-    df_clean,
-    lat='Latitude',
-    lon='Longitude',
-    color='Mag',
-    size='Mag',
-    hover_name='Place',
-    animation_frame='Year',
-    projection='natural earth',
-    title='Global Significant Earthquakes (1900–2023)',
-    color_continuous_scale='Turbo'
-)
-bubble_map.update_layout(geo=dict(showland=True, landcolor='rgb(217, 217, 217)'))
+fig_choropleth.update_layout(margin={"r":0,"t":40,"l":0,"b":0})
+fig_choropleth.show()
+     
 
-# Save as HTML
-bubble_map.write_html("earthquake_bubble_map.html")
+fig_bubble = px.scatter_geo(df_all,
+                            locations="Code",
+                            color="Renewable_Energy",
+                            hover_name="Country",
+                            size="Total_Energy",
+                            animation_frame="Year",
+                            projection="natural earth",
+                            title="Total Energy Usage and Renewable Energy (%) Over Time",
+                            color_continuous_scale="Viridis")
+     
 
-# ----------------------
-# Choropleth Map (Avg. Magnitude per Country by Year)
-# ----------------------
-# Extract country names from 'Place' (last part after comma)
-df_clean['Country'] = df_clean['Place'].apply(lambda x: x.split(',')[-1].strip() if pd.notnull(x) and ',' in x else None)
-df_country = df_clean.dropna(subset=['Country'])
-
-# Aggregate average magnitude by country and year
-choropleth_data = df_country.groupby(['Year', 'Country'])['Mag'].mean().reset_index()
-
-choropleth_map = px.choropleth(
-    choropleth_data,
-    locations='Country',
-    locationmode='country names',
-    color='Mag',
-    animation_frame='Year',
-    color_continuous_scale='Plasma',
-    title='Average Earthquake Magnitude by Country Over Time'
-)
-choropleth_map.update_layout(geo=dict(showframe=False, showcoastlines=True))
-
-# Save as HTML
-choropleth_map.write_html("earthquake_choropleth_map.html")
+fig_bubble.update_layout(margin={"r":0,"t":40,"l":0,"b":0})
+fig_bubble.show()
